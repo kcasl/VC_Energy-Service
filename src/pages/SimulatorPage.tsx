@@ -1,15 +1,19 @@
 import { FormEvent, useEffect, useState } from "react";
 import LevelPill from "../components/LevelPill";
 import { api, type SimOptions, type SimResult } from "../lib/load";
+import { usePrefs } from "../lib/prefs";
 import { formatKrw, formatNum } from "../lib/vitality";
 
 const TAG = { 실측: "real", 추론: "guess", 계산: "calc" } as const;
 
 function Tag({ kind }: { kind: keyof typeof TAG }) {
-  return <span className={`tag ${TAG[kind]}`}>{kind}</span>;
+  const { t } = usePrefs();
+  const label = kind === "실측" ? t("tagReal") : kind === "추론" ? t("tagGuess") : t("tagCalc");
+  return <span className={`tag ${TAG[kind]}`}>{label}</span>;
 }
 
 export default function SimulatorPage() {
+  const { t, lang, industry } = usePrefs();
   const [options, setOptions] = useState<SimOptions | null>(null);
   const [query, setQuery] = useState("");
   const [industryId, setIndustryId] = useState("cafe");
@@ -18,14 +22,14 @@ export default function SimulatorPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    api.simOptions().then(setOptions).catch(() => setError("서버에 연결되지 않습니다."));
+    api.simOptions().then(setOptions).catch(() => setError(t("offline")));
   }, []);
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
     const text = query.trim();
     if (text.length < 2) {
-      setError("위치를 입력하세요.");
+      setError(t("needPlace"));
       return;
     }
     setBusy(true);
@@ -38,43 +42,40 @@ export default function SimulatorPage() {
       })
       .catch((err: Error) => {
         setBusy(false);
-        setError(err.message || "계산에 실패했습니다.");
+        setError(err.message || t("calcFail"));
       });
   }
 
-  if (!options && !error) return <p>불러오는 중…</p>;
+  if (!options && !error) return <p>{t("loading")}</p>;
 
   return (
     <div>
       <div className="page-head">
         <div>
-          <h1>창업 계산</h1>
-          <p>
-            주소를 직접 입력합니다. 개업종합은 이 서비스 전용 100점이고, 수요·업종 기반·개폐 여유·주변 여유·전력 활동을 전국 백분위로 더합니다.
-          </p>
+          <h1>{t("simTitle")}</h1>
         </div>
       </div>
       <form className="form" onSubmit={onSubmit}>
         <label>
-          위치
+          {t("place")}
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="해운대 우동, 수원역, 제주시 연동"
+            placeholder={t("placePh")}
           />
         </label>
         <label>
-          업종
+          {t("industry")}
           <select value={industryId} onChange={(e) => setIndustryId(e.target.value)}>
             {options?.industries.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.name}
+                {industry(item.id, item.name)}
               </option>
             ))}
           </select>
         </label>
         <button type="submit" disabled={busy}>
-          {busy ? "계산 중" : "계산"}
+          {busy ? t("calculating") : t("calc")}
         </button>
       </form>
       {error && <p>{error}</p>}
@@ -82,30 +83,29 @@ export default function SimulatorPage() {
         <>
           <div className="card compete-card">
             <div className="kpi-label">
-              개업종합 · {result.sido} {result.area} {result.industryName}
+              {t("openParts")} · {result.sido} {result.area} {result.industryName}
               <Tag kind={result.openKind} />
             </div>
             <div className="compete">
               <strong>{result.openScore}</strong>
-              <span>100점 만점 · {result.openOf}개 시군구 중 {result.openRank}위</span>
+              <span>
+                {lang === "en"
+                  ? `${t("of100")} · ${result.openRank} of ${result.openOf}`
+                  : `${t("of100")} · ${result.openOf}${t("rankOf")} ${result.openRank}${t("rank")}`}
+              </span>
             </div>
-            <p className="src">
-              {result.place}. {result.note}
-              {result.seoulCompete != null && result.seoulRank != null
-                ? ` 서울 25개 구 경쟁력은 ${result.seoulCompete}, ${result.seoulRank}위입니다.`
-                : ""}
-            </p>
+            <p className="src">{result.place}</p>
           </div>
           <div className="card" style={{ marginBottom: 14 }}>
-            <h2>개업종합 항목</h2>
+            <h2>{t("openParts")}</h2>
             <table className="table">
               <thead>
                 <tr>
                   <th>항목</th>
-                  <th>가중</th>
-                  <th>전국 백분위</th>
-                  <th>반영</th>
-                  <th>의미</th>
+                  <th>{t("weight")}</th>
+                  <th>{t("pct")}</th>
+                  <th>{t("points")}</th>
+                  <th>{t("meaning")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -176,7 +176,7 @@ export default function SimulatorPage() {
             </div>
           </div>
           <div className="card" style={{ marginTop: 14 }}>
-            <h2>경쟁력 항목</h2>
+            <h2>{t("competeParts")}</h2>
             <table className="table">
               <thead>
                 <tr>
@@ -203,7 +203,7 @@ export default function SimulatorPage() {
             </table>
           </div>
           <div className="card" style={{ marginTop: 14 }}>
-            <h2>화면에 쓴 숫자</h2>
+            <h2>{t("usedNumbers")}</h2>
             <table className="table">
               <thead>
                 <tr>

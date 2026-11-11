@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { api, type CatalogItem, type CatalogRows } from "../lib/load";
+import { usePrefs } from "../lib/prefs";
 import { formatNum } from "../lib/vitality";
+
+function text(item: CatalogItem, key: "title" | "owner" | "purpose" | "grain" | "cadence" | "status" | "notes", lang: "ko" | "en") {
+  if (lang === "en") {
+    const en = item[`${key}En` as keyof CatalogItem];
+    if (typeof en === "string" && en) return en;
+  }
+  return item[key] ?? "";
+}
 
 function cell(value: string | number) {
   if (typeof value !== "number") return value;
@@ -8,6 +17,7 @@ function cell(value: string | number) {
 }
 
 export default function CatalogPage() {
+  const { t, lang } = usePrefs();
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [id, setId] = useState("");
   const [q, setQ] = useState("");
@@ -23,7 +33,7 @@ export default function CatalogPage() {
         setItems(d.items);
         setId(d.items.find((item) => item.hasRows)?.id ?? d.items[0]?.id ?? "");
       })
-      .catch(() => setError("서버에 연결되지 않습니다."));
+      .catch(() => setError(t("offline")));
   }, []);
 
   const current = items.find((item) => item.id === id);
@@ -40,7 +50,7 @@ export default function CatalogPage() {
         if (live) setTable(rows);
       })
       .catch(() => {
-        if (live) setError("표를 읽지 못했습니다.");
+        if (live) setError(t("tableMiss"));
       });
     return () => {
       live = false;
@@ -53,8 +63,7 @@ export default function CatalogPage() {
     <div>
       <div className="page-head">
         <div>
-          <h1>사용 데이터</h1>
-          <p>받은 자료와 행. 구와 검색으로 걸러 볼 수 있습니다.</p>
+          <h1>{t("dataTitle")}</h1>
         </div>
       </div>
       <div className="grid catalog-grid">
@@ -71,59 +80,59 @@ export default function CatalogPage() {
               }}
             >
               <span className="badge">P{item.priority}</span>
-              {item.title}
-              <div className="status-line">{item.status}</div>
+              {text(item, "title", lang)}
+              <div className="status-line">{text(item, "status", lang)}</div>
             </button>
           ))}
         </div>
         {current && (
           <div className="card">
-            <h2>{current.title}</h2>
+            <h2>{text(current, "title", lang)}</h2>
             <table className="table">
               <tbody>
                 <tr>
-                  <th>제공</th>
-                  <td>{current.owner}</td>
+                  <th>{t("provider")}</th>
+                  <td>{text(current, "owner", lang)}</td>
                 </tr>
                 <tr>
-                  <th>쓰는 이유</th>
-                  <td>{current.purpose}</td>
+                  <th>{t("why")}</th>
+                  <td>{text(current, "purpose", lang)}</td>
                 </tr>
                 <tr>
-                  <th>단위</th>
-                  <td>{current.grain}</td>
+                  <th>{t("unit")}</th>
+                  <td>{text(current, "grain", lang)}</td>
                 </tr>
                 <tr>
-                  <th>주기</th>
-                  <td>{current.cadence}</td>
+                  <th>{t("cadence")}</th>
+                  <td>{text(current, "cadence", lang)}</td>
                 </tr>
                 <tr>
-                  <th>상태</th>
-                  <td>{current.status}</td>
+                  <th>{t("status")}</th>
+                  <td>{text(current, "status", lang)}</td>
                 </tr>
                 <tr>
-                  <th>행</th>
+                  <th>{t("rows")}</th>
                   <td>{formatNum(current.rowCount)}</td>
                 </tr>
                 <tr>
-                  <th>화면</th>
-                  <td>{current.usedIn.join(" · ")}</td>
+                  <th>{t("screen")}</th>
+                  <td>{(lang === "en" && current.usedInEn?.length ? current.usedInEn : current.usedIn).join(" · ")}</td>
                 </tr>
                 <tr>
-                  <th>원문</th>
+                  <th>{t("source")}</th>
                   <td>
                     <a href={current.url} target="_blank" rel="noreferrer">
-                      링크
+                      {t("link")}
                     </a>
                   </td>
                 </tr>
                 <tr>
-                  <th>파일</th>
-                  <td>{current.localFiles.length ? current.localFiles.join(", ") : "없음"}</td>
+                  <th>{t("file")}</th>
+                  <td>{current.localFiles.length ? current.localFiles.join(", ") : t("none")}</td>
                 </tr>
               </tbody>
             </table>
-            {current.notes && <p>{current.notes}</p>}
+            {text(current, "notes", lang) && <p>{text(current, "notes", lang)}</p>}
             {table && (
               <>
                 <div className="toolbar">
@@ -133,7 +142,7 @@ export default function CatalogPage() {
                       setQ(e.target.value);
                       setPage(0);
                     }}
-                    placeholder="업종, 월"
+                    placeholder={t("search")}
                   />
                   {table.districts.length > 0 && (
                     <select
@@ -143,14 +152,14 @@ export default function CatalogPage() {
                         setPage(0);
                       }}
                     >
-                      <option>전체</option>
+                      <option value="전체">{t("all")}</option>
                       {table.districts.map((name) => (
                         <option key={name}>{name}</option>
                       ))}
                     </select>
                   )}
                   <span>
-                    {formatNum(table.total)} / {formatNum(table.all)}행
+                    {formatNum(table.total)} / {formatNum(table.all)} {t("rows")}
                   </span>
                 </div>
                 <div className="table-wrap">
@@ -175,13 +184,13 @@ export default function CatalogPage() {
                 </div>
                 <div className="pager">
                   <button disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
-                    이전
+                    {t("prev")}
                   </button>
                   <span>
                     {table.page + 1} / {table.pageCount}
                   </span>
                   <button disabled={page + 1 >= table.pageCount} onClick={() => setPage((p) => p + 1)}>
-                    다음
+                    {t("next")}
                   </button>
                 </div>
               </>

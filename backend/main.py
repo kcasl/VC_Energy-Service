@@ -106,6 +106,7 @@ def dashboard(focus: str = "서울 평균"):
     low = list(reversed(by_energy))[:8]
     return {
         "windowLabel": "2025.7–2026.6",
+        "gaps": ["가스", "공실", "건축물대장"],
         "names": ["서울 평균", *[d["name"] for d in rows]],
         "avgScore": round(sum(d["latest"]["score"] for d in rows) / len(rows), 1),
         "energyTop": {"name": top["name"], "gwh": gwh(top["yoyKwh"])},
@@ -200,6 +201,14 @@ def catalog():
                 "rowCount": item["rowCount"],
                 "notes": item.get("notes") or "",
                 "hasRows": bool(item.get("browse")),
+                "titleEn": item.get("titleEn") or "",
+                "ownerEn": item.get("ownerEn") or "",
+                "purposeEn": item.get("purposeEn") or "",
+                "grainEn": item.get("grainEn") or "",
+                "cadenceEn": item.get("cadenceEn") or "",
+                "statusEn": item.get("statusEn") or "",
+                "notesEn": item.get("notesEn") or "",
+                "usedInEn": item.get("usedInEn") or [],
             }
         )
     return {"items": items}

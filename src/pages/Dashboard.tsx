@@ -12,9 +12,11 @@ import {
 } from "recharts";
 import LevelPill from "../components/LevelPill";
 import { api, type Dash } from "../lib/load";
+import { usePrefs } from "../lib/prefs";
 import { formatNum } from "../lib/vitality";
 
 export default function Dashboard() {
+  const { t, theme } = usePrefs();
   const [focus, setFocus] = useState("서울 평균");
   const [data, setData] = useState<Dash | null>(null);
   const [error, setError] = useState("");
@@ -27,7 +29,7 @@ export default function Dashboard() {
         if (live) setData(d);
       })
       .catch(() => {
-        if (live) setError("서버에 연결되지 않습니다.");
+        if (live) setError(t("offline"));
       });
     return () => {
       live = false;
@@ -35,27 +37,44 @@ export default function Dashboard() {
   }, [focus]);
 
   if (error) return <p>{error}</p>;
-  if (!data) return <p>불러오는 중…</p>;
+  if (!data) return <p>{t("loading")}</p>;
 
   return (
     <div>
       <div className="page-head">
         <div>
-          <h1>대시보드</h1>
+          <h1>{t("dashTitle")}</h1>
           <p>
-            {data.windowLabel}. 한전 일반용 전력, 서울시 점포·매출·유동.{" "}
-            <span className="tag gap">데이터 부족</span> {data.gaps.join(", ")}.
+            {data.windowLabel}
+            <span className="tag gap">{t("gap")}</span> {(data.gaps ?? ["가스", "공실", "건축물대장"]).join(", ")}
           </p>
         </div>
       </div>
+      <section className="contribute">
+        <h2>{t("contribute")}</h2>
+        <div className="grid three">
+          <article className="card">
+            <h3>{t("c1")}</h3>
+            <p>{t("c1b")}</p>
+          </article>
+          <article className="card">
+            <h3>{t("c2")}</h3>
+            <p>{t("c2b")}</p>
+          </article>
+          <article className="card">
+            <h3>{t("c3")}</h3>
+            <p>{t("c3b")}</p>
+          </article>
+        </div>
+      </section>
       <div className="grid kpis">
         <div className="card">
-          <div className="kpi-label">평균 점수</div>
+          <div className="kpi-label">{t("avg")}</div>
           <div className="kpi-value">{data.avgScore.toFixed(1)}</div>
-          <div className="kpi-sub">25개 구</div>
+          <div className="kpi-sub">{t("districts25")}</div>
         </div>
         <div className="card">
-          <div className="kpi-label">전년 6월보다 전력</div>
+          <div className="kpi-label">{t("yoy")}</div>
           <div className="kpi-value">{data.energyTop.name}</div>
           <div className={data.energyTop.gwh >= 0 ? "kpi-sub up" : "kpi-sub down"}>
             {data.energyTop.gwh >= 0 ? "+" : ""}
@@ -63,21 +82,24 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="card">
-          <div className="kpi-label">점수 하락 + 폐업</div>
+          <div className="kpi-label">{t("drop")}</div>
           <div className="kpi-value">{data.stagnantName}</div>
-          <div className="kpi-sub">폐업률이 개업률보다 높음</div>
+          <div className="kpi-sub">{t("dropSub")}</div>
         </div>
         <div className="card">
-          <div className="kpi-label">폐업이 더 많은 구</div>
-          <div className="kpi-value">{data.closeOverOpen}곳</div>
-          <div className="kpi-sub">2026년 2분기</div>
+          <div className="kpi-label">{t("moreClose")}</div>
+          <div className="kpi-value">
+            {data.closeOverOpen}
+            {t("places")}
+          </div>
+          <div className="kpi-sub">{t("q2")}</div>
         </div>
       </div>
       <div className="card" style={{ marginTop: 14 }}>
         <div className="page-head" style={{ marginBottom: 8 }}>
-          <h2>점수와 전력</h2>
+          <h2>{t("scorePower")}</h2>
           <label className="inline">
-            구
+            {t("gu")}
             <select value={focus} onChange={(e) => setFocus(e.target.value)}>
               {data.names.map((name) => (
                 <option key={name}>{name}</option>
@@ -88,7 +110,7 @@ export default function Dashboard() {
         <div className="grid two" style={{ marginTop: 0 }}>
           <ResponsiveContainer width="100%" height={240}>
             <LineChart data={data.chart}>
-              <CartesianGrid stroke="#d5e2ee" />
+              <CartesianGrid stroke={theme === "dark" ? "#2c4054" : "#d5e2ee"} />
               <XAxis dataKey="month" />
               <YAxis />
               <Tooltip />
@@ -97,7 +119,7 @@ export default function Dashboard() {
           </ResponsiveContainer>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={data.chart}>
-              <CartesianGrid stroke="#d5e2ee" />
+              <CartesianGrid stroke={theme === "dark" ? "#2c4054" : "#d5e2ee"} />
               <XAxis dataKey="month" />
               <YAxis />
               <Tooltip />
@@ -108,14 +130,16 @@ export default function Dashboard() {
       </div>
       <div className="grid two">
         <div className="card">
-          <h2>개업 많은 업종 · {data.quarterLabel}</h2>
+          <h2>
+            {t("openInd")} · {data.quarterLabel}
+          </h2>
           <table className="table">
             <thead>
               <tr>
-                <th>업종</th>
-                <th>개업</th>
-                <th>폐업</th>
-                <th>점포</th>
+                <th>{t("ind")}</th>
+                <th>{t("opened")}</th>
+                <th>{t("closed")}</th>
+                <th>{t("stores")}</th>
               </tr>
             </thead>
             <tbody>
@@ -131,14 +155,14 @@ export default function Dashboard() {
           </table>
         </div>
         <div className="card">
-          <h2>전력 증가가 적은 구</h2>
+          <h2>{t("lowPower")}</h2>
           <table className="table">
             <thead>
               <tr>
-                <th>자치구</th>
-                <th>활력</th>
-                <th>전년 6월</th>
-                <th>폐업률</th>
+                <th>{t("district")}</th>
+                <th>{t("vitality")}</th>
+                <th>{t("yoyJune")}</th>
+                <th>{t("closeRate")}</th>
               </tr>
             </thead>
             <tbody>

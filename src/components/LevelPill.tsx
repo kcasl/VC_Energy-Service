@@ -1,12 +1,13 @@
+import { usePrefs } from "../lib/prefs";
 import { LEVELS } from "../lib/vitality";
 import type { VitalityLevel } from "../types";
 
 export default function LevelPill({ level }: { level: VitalityLevel }) {
-  const meta = LEVELS[level];
+  const { level: label } = usePrefs();
   return (
     <span className="level">
-      <span className="dot" style={{ background: meta.color }} />
-      {level} {meta.label}
+      <span className="dot" style={{ background: LEVELS[level].color }} />
+      {level} {label(level)}
     </span>
   );
 }

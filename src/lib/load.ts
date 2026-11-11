@@ -62,6 +62,14 @@ export type CatalogItem = {
   rowCount: number;
   notes: string;
   hasRows: boolean;
+  titleEn?: string;
+  ownerEn?: string;
+  purposeEn?: string;
+  grainEn?: string;
+  cadenceEn?: string;
+  statusEn?: string;
+  notesEn?: string;
+  usedInEn?: string[];
 };
 
 export type CatalogRows = {
@@ -154,7 +162,7 @@ export const api = {
     }).then(async (res) => {
       if (!res.ok) {
         const err = (await res.json().catch(() => null)) as { detail?: string } | null;
-        throw new Error(err?.detail || "계산에 실패했습니다.");
+        throw new Error(err?.detail || "계산 실패");
       }
       return res.json() as Promise<SimResult>;
     }),

@@ -11,6 +11,7 @@
     "data": "python scripts/download_public_data.py && python scripts/build_processed_data.py"
   },
   "dependencies": {
+    "katex": "^0.19.1",
     "leaflet": "^1.9.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
