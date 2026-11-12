@@ -1,3 +1,4 @@
+; MVP problem for the 25 Seoul districts, July 2025 through June 2026.
 ; 서울 25개 구 MVP. 창은 2025-07 ~ 2026-06.
 ; 골목 점은 자치구 점수와 같다. 가스·공실·건축물대장·전국 상가는 omitted.
 
