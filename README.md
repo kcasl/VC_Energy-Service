@@ -1,3 +1,4 @@
+<!-- Readme for the commercial vitality web service. -->
 # 상권 활력
 
 PDF 4번 — 전력·가스 사용량으로 상권 활력 지수를 읽는 웹 프로토타입.
