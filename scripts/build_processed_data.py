@@ -1,3 +1,4 @@
+# Build the Seoul monthly vitality index and the browse tables.
 """Fuse downloaded public files into the vitality index and browse tables.
 
 Window is 2025-07 through 2026-06 so monthly electricity and quarterly
