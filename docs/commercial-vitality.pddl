@@ -1,3 +1,4 @@
+; Domain for reading commercial vitality from electricity.
 ; 전력 사용량으로 상권 활력을 읽는 도메인.
 ; 설명 문서는 docs/PDDL.md. 이 파일이 플래너 입력이다.
 ; 가스·공실은 이번 수급에서 빠진다. 업종 전력은 매출로 추론하고 inferred 로 표시한다.
