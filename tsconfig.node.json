@@ -1,4 +1,5 @@
 {
+  // Compiler options for the Vite config.
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2023"],
