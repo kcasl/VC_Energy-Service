@@ -1,3 +1,4 @@
+# Group shop coordinates into street blocks inside each municipality.
 """Split each municipality into ~1.5km blocks from shop coordinates.
 
 None of the KEPCO, MOLIT, or LH public files publish alley electricity.
