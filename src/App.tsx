@@ -26,7 +26,7 @@ export default function App() {
     <div className="app-shell">
       <aside className="side">
         <div className="brand">
-          <img src="/brand/mark.png" alt={t("brand")} />
+          <img src={`${import.meta.env.BASE_URL}brand/mark.png`} alt={t("brand")} />
         </div>
         <nav className="nav">
           {links.map((l) => (
@@ -56,7 +56,7 @@ export default function App() {
         </div>
       </aside>
       <main className="main">
-        <img className="corner-logo" src="/brand/kentech.png" alt="KENTECH" />
+        <img className="corner-logo" src={`${import.meta.env.BASE_URL}brand/kentech.png`} alt="KENTECH" />
         <div className="main-body">
           <Routes>
             <Route path="/" element={<Dashboard />} />

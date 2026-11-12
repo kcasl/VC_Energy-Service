@@ -5,7 +5,7 @@ import type { Feature, FeatureCollection, GeoJsonObject } from "geojson";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import LevelPill from "../components/LevelPill";
-import { api, type MapSpot } from "../lib/load";
+import { API_ORIGIN, api, type MapSpot } from "../lib/load";
 import { usePrefs } from "../lib/prefs";
 import { LEVELS } from "../lib/vitality";
 import type { VitalityLevel } from "../types";
@@ -45,7 +45,7 @@ function StreetHeat() {
 
   useEffect(() => {
     let cancel = false;
-    fetch("/data/processed/national_stores.bin")
+    fetch(`${API_ORIGIN}/data/processed/national_stores.bin`)
       .then((res) => res.arrayBuffer())
       .then((buf) => {
         if (cancel) return;
@@ -291,7 +291,7 @@ export default function MapPage() {
 
   useEffect(() => {
     api.map().then((d) => setSpots(d.spots)).catch(() => setSpots([]));
-    fetch("/data/processed/national_map.geojson?v=vital")
+    fetch(`${API_ORIGIN}/data/processed/national_map.geojson?v=vital`)
       .then((res) => {
         if (!res.ok) throw new Error(String(res.status));
         return res.json() as Promise<FeatureCollection>;

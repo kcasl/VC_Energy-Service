@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { API_ORIGIN } from "../lib/load";
 import { usePrefs } from "../lib/prefs";
 
 type Endpoint = {
@@ -96,7 +97,7 @@ const ENDPOINTS: Endpoint[] = [
 export default function ApiPage() {
   const { t, lang } = usePrefs();
   const [copied, setCopied] = useState("");
-  const origin = window.location.origin;
+  const origin = API_ORIGIN;
 
   function copy(id: string, text: string) {
     const mark = () => setCopied(id);
@@ -145,7 +146,7 @@ export default function ApiPage() {
                   {copied === item.id ? t("copied") : t("copy")}
                 </button>
                 {item.method === "GET" && (
-                  <a href={item.example} target="_blank" rel="noreferrer">
+                  <a href={`${origin}${item.example}`} target="_blank" rel="noreferrer">
                     {t("open")}
                   </a>
                 )}

@@ -11,6 +11,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from backend import geoquery
@@ -22,7 +23,11 @@ GEO = ROOT / "public" / "data" / "raw" / "seoul_municipalities.geojson"
 app = FastAPI(title="상권 활력")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://kcasl.github.io",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -862,6 +867,8 @@ def simulate(body: SimBody):
         "note": "개업종합은 이 서비스에서만 쓰는 100점입니다. 위치는 입력한 주소를 좌표로 바꾼 뒤 1km를 셉니다. 서울 밖 매출·유동·개폐업은 추론입니다.",
     }
 
+
+app.mount("/data", StaticFiles(directory=ROOT / "public" / "data"), name="data")
 
 try:
     geoquery.load()

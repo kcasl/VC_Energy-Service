@@ -1,3 +1,9 @@
+export const API_ORIGIN = "http://3.34.129.129:8000";
+
+function apiUrl(path: string) {
+  return `${API_ORIGIN}${path}`;
+}
+
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${url} ${res.status}`);
@@ -174,17 +180,17 @@ function detailText(detail: unknown): string {
 
 export const api = {
   dashboard: (focus: string) =>
-    getJson<Dash>(`/api/dashboard?focus=${encodeURIComponent(focus)}`),
-  map: () => getJson<{ districts: MapDistrict[]; spots: MapSpot[] }>("/api/map"),
-  geo: () => getJson<GeoJSON.GeoJsonObject>("/api/geo"),
-  catalog: () => getJson<{ items: CatalogItem[] }>("/api/catalog"),
+    getJson<Dash>(apiUrl(`/api/dashboard?focus=${encodeURIComponent(focus)}`)),
+  map: () => getJson<{ districts: MapDistrict[]; spots: MapSpot[] }>(apiUrl("/api/map")),
+  geo: () => getJson<GeoJSON.GeoJsonObject>(apiUrl("/api/geo")),
+  catalog: () => getJson<{ items: CatalogItem[] }>(apiUrl("/api/catalog")),
   rows: (id: string, q: string, district: string, page: number) => {
     const params = new URLSearchParams({ q, district, page: String(page), size: "12" });
-    return getJson<CatalogRows>(`/api/catalog/${id}/rows?${params}`);
+    return getJson<CatalogRows>(apiUrl(`/api/catalog/${id}/rows?${params}`));
   },
-  simOptions: () => getJson<SimOptions>("/api/sim/options"),
+  simOptions: () => getJson<SimOptions>(apiUrl("/api/sim/options")),
   simulate: (payload: { query: string; industryId: string }) =>
-    fetch("/api/simulate", {
+    fetch(apiUrl("/api/simulate"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -195,9 +201,9 @@ export const api = {
       }
       return res.json() as Promise<SimResult>;
     }),
-  plans: () => getJson<Plans>("/api/plans"),
+  plans: () => getJson<Plans>(apiUrl("/api/plans")),
   rising: (scope: string, metric: string, mode: string, sido = "") =>
     getJson<Rising>(
-      `/api/rising?scope=${scope}&metric=${metric}&mode=${mode}&sido=${encodeURIComponent(sido)}`,
+      apiUrl(`/api/rising?scope=${scope}&metric=${metric}&mode=${mode}&sido=${encodeURIComponent(sido)}`),
     ),
 };
