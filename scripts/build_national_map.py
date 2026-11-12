@@ -1,3 +1,4 @@
+# Join June 2026 commercial electricity to municipality polygons.
 """Paint every municipality from KEPCO June 2026 commercial kWh.
 
 Seoul keeps the vitality score already built. Other regions have no
