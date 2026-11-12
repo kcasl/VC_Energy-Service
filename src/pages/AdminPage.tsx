@@ -135,22 +135,22 @@ const SECTIONS: Section[] = [
         en: "Below zoom 8 the color is provincial. Vitality uses q of the mean V of the member municipalities. Power uses q of the sum of rounded GWh. At zoom 8 and above each municipality uses its own q.",
       },
       {
-        tex: String.raw`\alpha=\min\!\left(1,\max\!\left(0,\frac{z-11}{1.6}\right)\right),\quad \mathrm{fill}=0.18-0.13\alpha`,
+        tex: String.raw`\alpha=\min\!\left(1,\max\!\left(0,\frac{z-11}{1.6}\right)\right),\quad \mathrm{fill}=0.28-0.22\alpha`,
       },
       {
         ko: "길가 점 불투명도 α. z<10.6, 점 미표시. 화면 안 상가, 경위도 칸. 칸 크기 z≥15는 0.0018°, z≥13은 0.0032°, 그 아래 0.0055°.",
         en: "Street-dot opacity is also α. Dots are not drawn below zoom 10.6. Shops in view are counted on a latitude-longitude grid: 0.0018° at zoom 15 and above, 0.0032° at zoom 13 and above, otherwise 0.0055°.",
       },
       {
-        ko: "화면 안 상가 20,000곳 초과 시 stride=⌈n/20000⌉. 색은 현재 화면 칸 중 더 적은 칸의 비율. 전국 고정 분위 아님. 경계 굵기 1.15 고정.",
-        en: "Above 20,000 shops in view, only every stride=⌈n/20000⌉-th shop is counted. Color is the share of cells in the current view with a strictly smaller count. It is not a fixed national quintile. Polygon stroke weight stays at 1.15.",
+        ko: "화면 안 상가 50,000곳 초과 시 stride=⌈n/50000⌉. 색은 현재 화면 칸 중 더 적은 칸의 비율. 전국 고정 분위 아님. 경계 굵기 1.15 고정.",
+        en: "Above 50,000 shops in view, only every stride=⌈n/50000⌉-th shop is counted. Color is the share of cells in the current view with a strictly smaller count. It is not a fixed national quintile. Polygon stroke weight stays at 1.15.",
       },
       {
         tex: String.raw`c=\min\!\left(4,\left\lfloor\frac{5\,|\{u:\mathrm{count}(u)<\mathrm{count}(cell)\}|}{n_{\mathrm{cells}}}\right\rfloor\right),\quad r=1.5+\min\!\bigl(2,\max(0,z-12)\cdot 0.45\bigr)`,
       },
       {
-        ko: "길가 점 색 첨자 c, 0부터 4. 범례 1–5와 같은 다섯 색. 캔버스 알파 0.45, 레이어 불투명도 α와 곱한 값 0.45α. 경계선 불투명도 0.45 고정. 좌표, 소수 여섯째 자리(도).",
-        en: "The street-dot color index c runs from 0 to 4 and uses the same five colors as legend levels 1 through 5. Canvas alpha is 0.45, so the visible alpha is 0.45α together with the layer opacity. Polygon stroke opacity stays at 0.45. Coordinates are stored to six decimal degrees.",
+        ko: "길가 점 색 첨자 c, 0부터 4. 범례 1–5와 같은 다섯 색. 캔버스 알파 0.82, 레이어 불투명도 α와 곱한 값 0.82α. 경계선 불투명도 0.45 고정. 좌표, 소수 여섯째 자리(도).",
+        en: "The street-dot color index c runs from 0 to 4 and uses the same five colors as legend levels 1 through 5. Canvas alpha is 0.82, so the visible alpha is 0.82α together with the layer opacity. Polygon stroke opacity stays at 0.45. Coordinates are stored to six decimal degrees.",
       },
     ],
   },

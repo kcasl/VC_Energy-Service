@@ -65,7 +65,7 @@
 }
 
 .leaflet-overlay-pane {
-  --area-fill: 0.18;
+  --area-fill: 0.28;
 }
 
 .leaflet-overlay-pane path.leaflet-interactive {

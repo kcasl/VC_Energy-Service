@@ -131,7 +131,7 @@ function StreetHeat() {
           }
         }
       }
-      const stride = hits.length > 20000 ? Math.ceil(hits.length / 20000) : 1;
+      const stride = hits.length > 50000 ? Math.ceil(hits.length / 50000) : 1;
       const counts = new Map<number, number>();
       for (let n = 0; n < hits.length; n += stride) {
         const lat = data.lats[hits[n]];
@@ -160,7 +160,7 @@ function StreetHeat() {
         const key = Math.floor(lat / cell) * 100000 + Math.floor(lng / cell);
         groups[colorOf.get(key) ?? 0].push(hits[n]);
       }
-      ctx.globalAlpha = 0.45;
+      ctx.globalAlpha = 0.82;
       for (let color = 0; color < groups.length; color++) {
         const group = groups[color];
         if (!group.length) continue;
@@ -266,11 +266,11 @@ function ZoomPaint({
   useEffect(() => {
     const pane = map.getPane("overlayPane");
     let band = map.getZoom() < 8 ? 0 : 1;
-    let shown = 0.18;
+    let shown = 0.28;
     const paint = () => {
       const zoom = map.getZoom();
       const alley = Math.min(1, Math.max(0, (zoom - 11) / 1.6));
-      const fillOpacity = 0.18 - 0.13 * alley;
+      const fillOpacity = 0.28 - 0.22 * alley;
       if (pane) pane.style.setProperty("--area-fill", fillOpacity.toFixed(3));
       const next = zoom < 8 ? 0 : 1;
       if (next === band && Math.abs(fillOpacity - shown) < 0.01) return;
@@ -500,7 +500,7 @@ export default function MapPage() {
                   weight: 1.15,
                   opacity: 0.45,
                   fillColor: LEVELS[level].color,
-                  fillOpacity: 0.18,
+                  fillOpacity: 0.28,
                 };
               }}
               onEachFeature={(feat: Feature, layerEl) => {
