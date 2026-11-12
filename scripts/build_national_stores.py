@@ -1,3 +1,4 @@
+# Count national shops and keep coordinates for the startup trades.
 """Count national shops from the SEMAS September 2026 store file.
 
 Coordinates are kept for the startup trades so a typed address can be
