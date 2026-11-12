@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { GeoJSON, MapContainer, TileLayer, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import { useSearchParams } from "react-router-dom";
 import type { Feature, FeatureCollection, GeoJsonObject } from "geojson";
 import L from "leaflet";
@@ -34,6 +34,33 @@ function asNation(props: GeoJsonObject | Feature["properties"]): Nation {
 type Shops = { lats: Float32Array; lngs: Float32Array; buckets: Map<number, number[]> };
 
 const STREET = ["#2f9e5f", "#7cbc3d", "#e3c34a", "#e07b2e", "#d63a2f"];
+
+type CanvasTune = {
+  _clear: () => void;
+  _onMouseMove: (event: MouseEvent) => void;
+  _hoverAt?: number;
+  _vcTuned?: boolean;
+};
+
+const canvasTune = L.Canvas.prototype as unknown as CanvasTune;
+if (!canvasTune._vcTuned) {
+  const clearCanvas = canvasTune._clear;
+  canvasTune._clear = function (this: { _ctx?: CanvasRenderingContext2D }) {
+    const ctx = this._ctx;
+    const alpha = ctx ? ctx.globalAlpha : 1;
+    if (ctx && alpha !== 1) ctx.globalAlpha = 1;
+    clearCanvas.call(this);
+    if (ctx && alpha !== 1) ctx.globalAlpha = alpha;
+  };
+  const moveCanvas = canvasTune._onMouseMove;
+  canvasTune._onMouseMove = function (this: CanvasTune, event: MouseEvent) {
+    const now = performance.now();
+    if (this._hoverAt !== undefined && now - this._hoverAt < 40) return;
+    this._hoverAt = now;
+    moveCanvas.call(this, event);
+  };
+  canvasTune._vcTuned = true;
+}
 
 function bucketKey(lat: number, lng: number) {
   return Math.floor(lat * 20) * 10000 + Math.floor(lng * 20);
@@ -88,19 +115,26 @@ function StreetHeat() {
     let zooming = false;
     let wait = 0;
     let frame = 0;
+    let viewKey = "";
+    let hitBuf = new Int32Array(65536);
     const draw = () => {
       fade();
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
-      if (map.getZoom() < 10.6) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const zoom = map.getZoom();
+      if (zoom < 10.6) {
+        if (viewKey !== "off") {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          viewKey = "off";
+        }
         return;
       }
       const size = map.getSize();
       const ratio = window.devicePixelRatio || 1;
       const nextW = Math.round(size.x * ratio);
       const nextH = Math.round(size.y * ratio);
-      if (canvas.width !== nextW || canvas.height !== nextH) {
+      const resized = canvas.width !== nextW || canvas.height !== nextH;
+      if (resized) {
         canvas.width = nextW;
         canvas.height = nextH;
         canvas.style.width = `${size.x}px`;
@@ -109,67 +143,85 @@ function StreetHeat() {
       const origin = map.containerPointToLayerPoint([0, 0]);
       L.DomUtil.setPosition(canvas, origin);
       const data = shops.current;
-      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-      ctx.clearRect(0, 0, size.x, size.y);
       if (!data) return;
       const bounds = map.getBounds();
       const south = bounds.getSouth();
       const north = bounds.getNorth();
       const west = bounds.getWest();
       const east = bounds.getEast();
-      const zoom = map.getZoom();
+      const key = `${zoom.toFixed(2)}|${south.toFixed(3)}|${west.toFixed(3)}|${size.x}|${size.y}`;
+      if (!resized && key === viewKey) return;
+      viewKey = key;
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.clearRect(0, 0, size.x, size.y);
       const cell = zoom >= 15 ? 0.0018 : zoom >= 13 ? 0.0032 : 0.0055;
-      const hits: number[] = [];
+      const lats = data.lats;
+      const lngs = data.lngs;
+      let hitN = 0;
       for (let i = Math.floor(south * 20); i <= Math.floor(north * 20); i++) {
         for (let j = Math.floor(west * 20); j <= Math.floor(east * 20); j++) {
           const list = data.buckets.get(i * 10000 + j);
           if (!list) continue;
-          for (const index of list) {
-            const lat = data.lats[index];
-            const lng = data.lngs[index];
-            if (lat >= south && lat <= north && lng >= west && lng <= east) hits.push(index);
+          for (let k = 0; k < list.length; k++) {
+            const index = list[k];
+            const lat = lats[index];
+            const lng = lngs[index];
+            if (lat < south || lat > north || lng < west || lng > east) continue;
+            if (hitN >= hitBuf.length) {
+              const next = new Int32Array(hitBuf.length * 2);
+              next.set(hitBuf);
+              hitBuf = next;
+            }
+            hitBuf[hitN] = index;
+            hitN += 1;
           }
         }
       }
-      const stride = hits.length > 50000 ? Math.ceil(hits.length / 50000) : 1;
+      const stride = hitN > 50000 ? Math.ceil(hitN / 50000) : 1;
       const counts = new Map<number, number>();
-      for (let n = 0; n < hits.length; n += stride) {
-        const lat = data.lats[hits[n]];
-        const lng = data.lngs[hits[n]];
-        const key = Math.floor(lat / cell) * 100000 + Math.floor(lng / cell);
-        counts.set(key, (counts.get(key) ?? 0) + 1);
+      for (let n = 0; n < hitN; n += stride) {
+        const lat = lats[hitBuf[n]];
+        const lng = lngs[hitBuf[n]];
+        const cellKey = Math.floor(lat / cell) * 100000 + Math.floor(lng / cell);
+        counts.set(cellKey, (counts.get(cellKey) ?? 0) + 1);
       }
-      const ordered = [...counts.values()].sort((a, b) => a - b);
-      const denom = Math.max(ordered.length, 1);
-      const colorOf = new Map<number, number>();
-      for (const [key, count] of counts) {
-        let lo = 0;
-        let hi = ordered.length;
-        while (lo < hi) {
-          const mid = (lo + hi) >> 1;
-          if (ordered[mid] < count) lo = mid + 1;
-          else hi = mid;
-        }
-        colorOf.set(key, Math.min(4, Math.floor((lo * 5) / denom)));
+      let maxCount = 0;
+      for (const count of counts.values()) if (count > maxCount) maxCount = count;
+      const hist = new Uint32Array(maxCount + 1);
+      for (const count of counts.values()) hist[count] += 1;
+      for (let i = 1; i <= maxCount; i++) hist[i] += hist[i - 1];
+      const denom = Math.max(counts.size, 1);
+      const colorOfCount = new Uint8Array(maxCount + 1);
+      for (let count = 1; count <= maxCount; count++) {
+        colorOfCount[count] = Math.min(4, Math.floor((hist[count - 1] * 5) / denom));
       }
       const radius = 1.5 + Math.min(2, Math.max(0, zoom - 12) * 0.45);
       const groups: number[][] = [[], [], [], [], []];
-      for (let n = 0; n < hits.length; n += stride) {
-        const lat = data.lats[hits[n]];
-        const lng = data.lngs[hits[n]];
-        const key = Math.floor(lat / cell) * 100000 + Math.floor(lng / cell);
-        groups[colorOf.get(key) ?? 0].push(hits[n]);
+      for (let n = 0; n < hitN; n += stride) {
+        const index = hitBuf[n];
+        const lat = lats[index];
+        const lng = lngs[index];
+        const cellKey = Math.floor(lat / cell) * 100000 + Math.floor(lng / cell);
+        groups[colorOfCount[counts.get(cellKey) ?? 1]].push(index);
       }
+      const world = 256 * 2 ** zoom;
+      const pixelOrigin = map.getPixelOrigin();
+      const ox = pixelOrigin.x + origin.x;
+      const oy = pixelOrigin.y + origin.y;
       ctx.globalAlpha = 0.82;
       for (let color = 0; color < groups.length; color++) {
         const group = groups[color];
         if (!group.length) continue;
         ctx.beginPath();
         ctx.fillStyle = STREET[color];
-        for (const index of group) {
-          const point = map.latLngToLayerPoint([data.lats[index], data.lngs[index]]);
-          ctx.moveTo(point.x - origin.x + radius, point.y - origin.y);
-          ctx.arc(point.x - origin.x, point.y - origin.y, radius, 0, Math.PI * 2);
+        for (let n = 0; n < group.length; n++) {
+          const lat = lats[group[n]];
+          const lng = lngs[group[n]];
+          const sine = Math.sin(lat * 0.017453292519943295);
+          const x = ((lng + 180) / 360) * world - ox;
+          const y = (0.5 - Math.log((1 + sine) / (1 - sine)) / (4 * Math.PI)) * world - oy;
+          ctx.moveTo(x + radius, y);
+          ctx.arc(x, y, radius, 0, Math.PI * 2);
         }
         ctx.fill();
       }
@@ -255,30 +307,29 @@ function ZoomPaint({
   colorMode,
   sidoRank,
   sidoPower,
-  stroke,
 }: {
   colorMode: "활력" | "전력";
   sidoRank: Map<string, VitalityLevel>;
   sidoPower: Map<string, VitalityLevel>;
-  stroke: string;
 }) {
   const map = useMap();
   useEffect(() => {
     const pane = map.getPane("overlayPane");
     let band = map.getZoom() < 8 ? 0 : 1;
-    let shown = 0.28;
     const paint = () => {
       const zoom = map.getZoom();
       const alley = Math.min(1, Math.max(0, (zoom - 11) / 1.6));
       const fillOpacity = 0.28 - 0.22 * alley;
       if (pane) pane.style.setProperty("--area-fill", fillOpacity.toFixed(3));
       const next = zoom < 8 ? 0 : 1;
-      if (next === band && Math.abs(fillOpacity - shown) < 0.01) return;
+      const recolor = next !== band;
       band = next;
-      shown = fillOpacity;
       map.eachLayer((layer) => {
         const feature = (layer as L.Layer & { feature?: Feature }).feature;
         if (!feature?.properties) return;
+        const path = layer as L.Path;
+        path.options.fillOpacity = fillOpacity;
+        if (!recolor) return;
         const row = asNation(feature.properties);
         const level =
           next === 0
@@ -286,35 +337,84 @@ function ZoomPaint({
             : colorMode === "전력"
               ? row.rankLevel
               : row.vitalRank;
-        (layer as L.Path).setStyle({
-          color: stroke,
-          weight: 1.15,
-          opacity: 0.45,
-          fillColor: LEVELS[level].color,
-          fillOpacity,
-        });
+        path.options.fillColor = LEVELS[level].color;
       });
     };
     map.on("zoomend", paint);
     return () => {
       map.off("zoomend", paint);
     };
-  }, [map, colorMode, sidoRank, sidoPower, stroke]);
+  }, [map, colorMode, sidoRank, sidoPower]);
   return null;
 }
 
-function RememberZoom({ zoomRef }: { zoomRef: { current: number } }) {
+function AreaLayer({
+  data,
+  colorMode,
+  stroke,
+  lang,
+  sidoRank,
+  sidoPower,
+  onPick,
+}: {
+  data: FeatureCollection;
+  colorMode: "활력" | "전력";
+  stroke: string;
+  lang: string;
+  sidoRank: Map<string, VitalityLevel>;
+  sidoPower: Map<string, VitalityLevel>;
+  onPick: (row: Nation) => void;
+}) {
   const map = useMap();
+  const { t } = usePrefs();
+  const pickRef = useRef(onPick);
+  const copyRef = useRef(t);
+  pickRef.current = onPick;
+  copyRef.current = t;
+  const held = useRef<L.GeoJSON | null>(null);
+
   useEffect(() => {
-    const send = () => {
-      zoomRef.current = map.getZoom();
-    };
-    send();
-    map.on("zoomend", send);
+    if (held.current) {
+      map.removeLayer(held.current);
+      held.current = null;
+    }
+    const layer = L.geoJSON(data as GeoJsonObject, {
+      smoothFactor: 2,
+      style: (feat) => {
+        const row = asNation(feat?.properties);
+        const zoom = map.getZoom();
+        const wide = zoom < 8;
+        const alley = Math.min(1, Math.max(0, (zoom - 11) / 1.6));
+        const level = wide
+          ? ((colorMode === "전력" ? sidoPower : sidoRank).get(row.sido) ?? 3)
+          : colorMode === "전력"
+            ? row.rankLevel
+            : row.vitalRank;
+        return {
+          color: stroke,
+          weight: 1.15,
+          opacity: 0.45,
+          fillColor: LEVELS[level].color,
+          fillOpacity: 0.28 - 0.22 * alley,
+        };
+      },
+      onEachFeature(feat, layerEl) {
+        const row = asNation(feat.properties);
+        layerEl.on("click", () => pickRef.current(row));
+        const tag = row.salesKind === "실측" ? copyRef.current("measured") : copyRef.current("inferred");
+        layerEl.bindPopup(
+          `<strong>${row.sido} ${row.name}</strong><br/>${copyRef.current("vitality")} ${row.score}${copyRef.current("score")}<br/>${copyRef.current("commercial")} ${row.gwh} GWh<br/>${tag}`,
+          { autoPan: false },
+        );
+      },
+    });
+    held.current = layer;
+    map.addLayer(layer);
     return () => {
-      map.off("zoomend", send);
+      map.removeLayer(layer);
+      if (held.current === layer) held.current = null;
     };
-  }, [map, zoomRef]);
+  }, [map, data, colorMode, stroke, lang, sidoRank, sidoPower]);
   return null;
 }
 
@@ -328,7 +428,6 @@ export default function MapPage() {
   const [spots, setSpots] = useState<MapSpot[]>([]);
   const [geo, setGeo] = useState<FeatureCollection | null>(null);
   const [q, setQ] = useState("");
-  const zoomRef = useRef(7);
   const [colorMode, setColorMode] = useState<"활력" | "전력">(params.get("color") === "전력" ? "전력" : "활력");
   const [focus, setFocus] = useState<{ lat: number; lng: number } | null>(null);
   const [picked, setPicked] = useState<Nation | MapSpot | null>(null);
@@ -481,36 +580,16 @@ export default function MapPage() {
             style={{ height: "100%", width: "100%" }}
           >
             <TileLayer attribution="&copy; OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            <RememberZoom zoomRef={zoomRef} />
-            <ZoomPaint colorMode={colorMode} sidoRank={sidoRank} sidoPower={sidoPower} stroke={stroke} />
+            <ZoomPaint colorMode={colorMode} sidoRank={sidoRank} sidoPower={sidoPower} />
             {focus && <FlyTo lat={focus.lat} lng={focus.lng} />}
-            <GeoJSON
-              key={`${colorMode}-${theme}-${lang}`}
-              data={geo as GeoJsonObject}
-              style={(feat) => {
-                const row = asNation(feat?.properties);
-                const wide = zoomRef.current < 8;
-                const level = wide
-                  ? ((colorMode === "전력" ? sidoPower : sidoRank).get(row.sido) ?? 3)
-                  : colorMode === "전력"
-                    ? row.rankLevel
-                    : row.vitalRank;
-                return {
-                  color: stroke,
-                  weight: 1.15,
-                  opacity: 0.45,
-                  fillColor: LEVELS[level].color,
-                  fillOpacity: 0.28,
-                };
-              }}
-              onEachFeature={(feat: Feature, layerEl) => {
-                const row = asNation(feat.properties);
-                layerEl.on("click", () => setPicked(row));
-                const tag = row.salesKind === "실측" ? t("measured") : t("inferred");
-                layerEl.bindPopup(
-                  `<strong>${row.sido} ${row.name}</strong><br/>${t("vitality")} ${row.score}${t("score")}<br/>${t("commercial")} ${row.gwh} GWh<br/>${tag}`,
-                );
-              }}
+            <AreaLayer
+              data={geo}
+              colorMode={colorMode}
+              stroke={stroke}
+              lang={lang}
+              sidoRank={sidoRank}
+              sidoPower={sidoPower}
+              onPick={setPicked}
             />
             <StreetHeat />
             <MarkTarget key={`${colorMode}-${theme}-${lang}`} sido={targetSido} name={targetName} color={markColor} />
