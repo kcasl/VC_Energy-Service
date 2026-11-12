@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { GeoJSON, MapContainer, TileLayer, useMap } from "react-leaflet";
 import { useSearchParams } from "react-router-dom";
 import type { Feature, FeatureCollection, GeoJsonObject } from "geojson";
@@ -85,26 +85,33 @@ function StreetHeat() {
       const shown = Math.min(1, Math.max(0, (map.getZoom() - 11) / 1.6));
       pane.style.opacity = String(shown);
     };
+    let zooming = false;
+    let wait = 0;
+    let frame = 0;
     const draw = () => {
       fade();
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
       if (map.getZoom() < 10.6) {
-        const ctx = canvas.getContext("2d");
-        ctx?.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         return;
       }
       const size = map.getSize();
       const ratio = window.devicePixelRatio || 1;
-      canvas.width = size.x * ratio;
-      canvas.height = size.y * ratio;
-      canvas.style.width = `${size.x}px`;
-      canvas.style.height = `${size.y}px`;
+      const nextW = Math.round(size.x * ratio);
+      const nextH = Math.round(size.y * ratio);
+      if (canvas.width !== nextW || canvas.height !== nextH) {
+        canvas.width = nextW;
+        canvas.height = nextH;
+        canvas.style.width = `${size.x}px`;
+        canvas.style.height = `${size.y}px`;
+      }
       const origin = map.containerPointToLayerPoint([0, 0]);
       L.DomUtil.setPosition(canvas, origin);
-      const ctx = canvas.getContext("2d");
       const data = shops.current;
-      if (!ctx || !data) return;
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       ctx.clearRect(0, 0, size.x, size.y);
+      if (!data) return;
       const bounds = map.getBounds();
       const south = bounds.getSouth();
       const north = bounds.getNorth();
@@ -124,7 +131,7 @@ function StreetHeat() {
           }
         }
       }
-      const stride = hits.length > 50000 ? Math.ceil(hits.length / 50000) : 1;
+      const stride = hits.length > 20000 ? Math.ceil(hits.length / 20000) : 1;
       const counts = new Map<number, number>();
       for (let n = 0; n < hits.length; n += stride) {
         const lat = data.lats[hits[n]];
@@ -133,30 +140,69 @@ function StreetHeat() {
         counts.set(key, (counts.get(key) ?? 0) + 1);
       }
       const ordered = [...counts.values()].sort((a, b) => a - b);
-      const levelOf = (count: number) => {
-        let index = 0;
-        while (index < ordered.length && ordered[index] < count) index += 1;
-        return Math.min(4, Math.floor((index * 5) / Math.max(ordered.length, 1)));
-      };
+      const denom = Math.max(ordered.length, 1);
+      const colorOf = new Map<number, number>();
+      for (const [key, count] of counts) {
+        let lo = 0;
+        let hi = ordered.length;
+        while (lo < hi) {
+          const mid = (lo + hi) >> 1;
+          if (ordered[mid] < count) lo = mid + 1;
+          else hi = mid;
+        }
+        colorOf.set(key, Math.min(4, Math.floor((lo * 5) / denom)));
+      }
       const radius = 1.5 + Math.min(2, Math.max(0, zoom - 12) * 0.45);
-      ctx.globalAlpha = 0.82;
+      const groups: number[][] = [[], [], [], [], []];
       for (let n = 0; n < hits.length; n += stride) {
         const lat = data.lats[hits[n]];
         const lng = data.lngs[hits[n]];
         const key = Math.floor(lat / cell) * 100000 + Math.floor(lng / cell);
-        const point = map.latLngToLayerPoint([lat, lng]);
-        ctx.fillStyle = STREET[levelOf(counts.get(key) ?? 1)];
+        groups[colorOf.get(key) ?? 0].push(hits[n]);
+      }
+      ctx.globalAlpha = 0.45;
+      for (let color = 0; color < groups.length; color++) {
+        const group = groups[color];
+        if (!group.length) continue;
         ctx.beginPath();
-        ctx.arc(point.x - origin.x, point.y - origin.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = STREET[color];
+        for (const index of group) {
+          const point = map.latLngToLayerPoint([data.lats[index], data.lngs[index]]);
+          ctx.moveTo(point.x - origin.x + radius, point.y - origin.y);
+          ctx.arc(point.x - origin.x, point.y - origin.y, radius, 0, Math.PI * 2);
+        }
         ctx.fill();
       }
     };
+    const schedule = () => {
+      if (zooming) return;
+      window.clearTimeout(wait);
+      window.cancelAnimationFrame(frame);
+      wait = window.setTimeout(() => {
+        frame = window.requestAnimationFrame(draw);
+      }, 80);
+    };
+    const onZoomStart = () => {
+      zooming = true;
+      window.clearTimeout(wait);
+      fade();
+    };
+    const onZoomEnd = () => {
+      zooming = false;
+      schedule();
+    };
+    map.on("zoomstart", onZoomStart);
     map.on("zoom", fade);
-    map.on("moveend zoomend resize", draw);
+    map.on("zoomend", onZoomEnd);
+    map.on("moveend resize", schedule);
     draw();
     return () => {
+      window.clearTimeout(wait);
+      window.cancelAnimationFrame(frame);
+      map.off("zoomstart", onZoomStart);
       map.off("zoom", fade);
-      map.off("moveend zoomend resize", draw);
+      map.off("zoomend", onZoomEnd);
+      map.off("moveend resize", schedule);
       canvas.remove();
     };
   }, [map]);
@@ -218,46 +264,57 @@ function ZoomPaint({
 }) {
   const map = useMap();
   useEffect(() => {
-    const apply = () => {
+    const pane = map.getPane("overlayPane");
+    let band = map.getZoom() < 8 ? 0 : 1;
+    let shown = 0.18;
+    const paint = () => {
       const zoom = map.getZoom();
       const alley = Math.min(1, Math.max(0, (zoom - 11) / 1.6));
+      const fillOpacity = 0.18 - 0.13 * alley;
+      if (pane) pane.style.setProperty("--area-fill", fillOpacity.toFixed(3));
+      const next = zoom < 8 ? 0 : 1;
+      if (next === band && Math.abs(fillOpacity - shown) < 0.01) return;
+      band = next;
+      shown = fillOpacity;
       map.eachLayer((layer) => {
         const feature = (layer as L.Layer & { feature?: Feature }).feature;
         if (!feature?.properties) return;
         const row = asNation(feature.properties);
         const level =
-          zoom < 8
+          next === 0
             ? ((colorMode === "전력" ? sidoPower : sidoRank).get(row.sido) ?? 3)
             : colorMode === "전력"
               ? row.rankLevel
               : row.vitalRank;
         (layer as L.Path).setStyle({
           color: stroke,
-          weight: 1.15 + 0.25 * alley,
-          opacity: 0.8,
+          weight: 1.15,
+          opacity: 0.45,
           fillColor: LEVELS[level].color,
-          fillOpacity: 0.3 - 0.18 * alley,
+          fillOpacity,
         });
       });
     };
-    map.on("zoomend", apply);
+    map.on("zoomend", paint);
     return () => {
-      map.off("zoomend", apply);
+      map.off("zoomend", paint);
     };
   }, [map, colorMode, sidoRank, sidoPower, stroke]);
   return null;
 }
 
-function WatchView({ onView }: { onView: (zoom: number) => void }) {
+function RememberZoom({ zoomRef }: { zoomRef: { current: number } }) {
   const map = useMap();
   useEffect(() => {
-    const send = () => onView(map.getZoom());
+    const send = () => {
+      zoomRef.current = map.getZoom();
+    };
     send();
     map.on("zoomend", send);
     return () => {
       map.off("zoomend", send);
     };
-  }, [map, onView]);
+  }, [map, zoomRef]);
   return null;
 }
 
@@ -271,7 +328,7 @@ export default function MapPage() {
   const [spots, setSpots] = useState<MapSpot[]>([]);
   const [geo, setGeo] = useState<FeatureCollection | null>(null);
   const [q, setQ] = useState("");
-  const [zoom, setZoom] = useState(7);
+  const zoomRef = useRef(7);
   const [colorMode, setColorMode] = useState<"활력" | "전력">(params.get("color") === "전력" ? "전력" : "활력");
   const [focus, setFocus] = useState<{ lat: number; lng: number } | null>(null);
   const [picked, setPicked] = useState<Nation | MapSpot | null>(null);
@@ -298,10 +355,6 @@ export default function MapPage() {
       })
       .then(setGeo)
       .catch(() => setError(t("mapMiss")));
-  }, []);
-
-  const onView = useCallback((nextZoom: number) => {
-    setZoom(nextZoom);
   }, []);
 
   const areas = useMemo(
@@ -418,13 +471,17 @@ export default function MapPage() {
           <MapContainer
             center={[36.4, 127.8]}
             zoom={7}
-            zoomSnap={0}
+            zoomSnap={0.5}
             zoomDelta={0.5}
-            wheelPxPerZoomLevel={140}
+            wheelPxPerZoomLevel={160}
+            preferCanvas
+            zoomAnimation={false}
+            fadeAnimation={false}
+            markerZoomAnimation={false}
             style={{ height: "100%", width: "100%" }}
           >
             <TileLayer attribution="&copy; OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            <WatchView onView={onView} />
+            <RememberZoom zoomRef={zoomRef} />
             <ZoomPaint colorMode={colorMode} sidoRank={sidoRank} sidoPower={sidoPower} stroke={stroke} />
             {focus && <FlyTo lat={focus.lat} lng={focus.lng} />}
             <GeoJSON
@@ -432,19 +489,18 @@ export default function MapPage() {
               data={geo as GeoJsonObject}
               style={(feat) => {
                 const row = asNation(feat?.properties);
-                const level =
-                  colorMode === "전력"
+                const wide = zoomRef.current < 8;
+                const level = wide
+                  ? ((colorMode === "전력" ? sidoPower : sidoRank).get(row.sido) ?? 3)
+                  : colorMode === "전력"
                     ? row.rankLevel
                     : row.vitalRank;
-                const wide = zoom < 8;
-                const wideLevel = ((colorMode === "전력" ? sidoPower : sidoRank).get(row.sido) ?? 3);
-                const alley = Math.min(1, Math.max(0, (zoom - 11) / 1.6));
                 return {
                   color: stroke,
-                  weight: 1.15 + 0.25 * alley,
-                  opacity: 0.8,
-                  fillColor: LEVELS[wide ? wideLevel : level].color,
-                  fillOpacity: 0.3 - 0.18 * alley,
+                  weight: 1.15,
+                  opacity: 0.45,
+                  fillColor: LEVELS[level].color,
+                  fillOpacity: 0.18,
                 };
               }}
               onEachFeature={(feat: Feature, layerEl) => {

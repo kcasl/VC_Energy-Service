@@ -64,6 +64,14 @@
   filter: invert(100%) hue-rotate(180deg) brightness(0.82) contrast(0.92);
 }
 
+.leaflet-overlay-pane {
+  --area-fill: 0.18;
+}
+
+.leaflet-overlay-pane path.leaflet-interactive {
+  fill-opacity: var(--area-fill) !important;
+}
+
 * {
   box-sizing: border-box;
 }
