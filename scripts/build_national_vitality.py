@@ -1,3 +1,4 @@
+# Score every municipality for June 2026 and label inferred inputs.
 """Fill a June 2026 vitality score for every municipality.
 
 Seoul keeps measured sales, footfall, and open/close. Other regions
