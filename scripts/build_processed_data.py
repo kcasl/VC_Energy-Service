@@ -8,6 +8,7 @@ until a district-level file is on disk.
 from __future__ import annotations
 
 import json
+import sys
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -52,18 +53,10 @@ PLACES = {
     "강동구": ("근교", 37.5301, 127.1238),
 }
 
-INDUSTRIES = [
-    {"id": "cafe", "name": "카페", "match": ["커피"], "kwhPerPyeong": 118, "kwPerPyeong": 0.38, "note": "머신·냉난방 비중을 가정한 원단위. 지역 가중만 실측 전력/점포."},
-    {"id": "korean", "name": "한식", "match": ["한식음식점"], "kwhPerPyeong": 176, "kwPerPyeong": 0.52, "note": "취사 부하를 가정한 원단위."},
-    {"id": "chicken", "name": "치킨·분식", "match": ["치킨", "분식"], "kwhPerPyeong": 154, "kwPerPyeong": 0.48, "note": "튀김 피크를 가정한 원단위."},
-    {"id": "pub", "name": "호프·주점", "match": ["호프"], "kwhPerPyeong": 96, "kwPerPyeong": 0.32, "note": "야간 조명·냉방을 가정한 원단위."},
-    {"id": "cvs", "name": "편의점", "match": ["편의점"], "kwhPerPyeong": 268, "kwPerPyeong": 0.62, "note": "24시간 냉장·조명을 가정한 원단위."},
-    {"id": "beauty", "name": "미용", "match": ["미용실"], "kwhPerPyeong": 54, "kwPerPyeong": 0.22, "note": "드라이어·온수를 가정한 원단위."},
-    {"id": "academy", "name": "학원", "match": ["학원"], "kwhPerPyeong": 62, "kwPerPyeong": 0.24, "note": "조명·공조를 가정한 원단위. 예술·외국어·일반·컴퓨터학원을 합칩니다."},
-    {"id": "retail", "name": "의류소매", "match": ["일반의류"], "kwhPerPyeong": 41, "kwPerPyeong": 0.18, "note": "조명·공조를 가정한 원단위."},
-    {"id": "gym", "name": "헬스", "match": ["스포츠클럽"], "kwhPerPyeong": 102, "kwPerPyeong": 0.36, "note": "운동기기·공조를 가정한 원단위."},
-    {"id": "pharmacy", "name": "약국", "match": ["의약품"], "kwhPerPyeong": 47, "kwPerPyeong": 0.2, "note": "서울 생활밀접업종명은 의약품. 냉장·조명을 가정한 원단위."},
-]
+sys.path.insert(0, str(ROOT))
+from backend.industry_catalog import public_rows
+
+INDUSTRIES = public_rows()
 
 SPOTS = [
     {"id": "yeoksam", "name": "역삼역 인근 골목", "district": "강남구", "type": "골목", "lat": 37.5007, "lng": 127.0366, "industryBias": "카페"},
@@ -314,12 +307,15 @@ def main() -> None:
     rivals: dict[tuple[str, str], int] = {}
     for spec in INDUSTRIES:
         names = latest_store["서비스_업종_코드_명"].astype(str)
-        mask = False
-        for token in spec["match"]:
-            mask = mask | names.str.contains(token, na=False)
-        matched = latest_store[mask]
+        if spec.get("match"):
+            mask = False
+            for token in spec["match"]:
+                mask = mask | names.str.contains(token, na=False)
+            matched = latest_store[mask]
+        else:
+            matched = latest_store[names.isin(spec["seoulNames"])]
         if matched.empty:
-            raise SystemExit(f"industry match empty: {spec['match']}")
+            raise SystemExit(f"industry match empty: {spec.get('match') or spec['seoulNames']}")
         spec["seoulNames"] = sorted(matched["서비스_업종_코드_명"].unique())
         for name, part in matched.groupby("자치구_코드_명"):
             rivals[(str(name), spec["name"])] = int(part["전체_점포_수"].sum())

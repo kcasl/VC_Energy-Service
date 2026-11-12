@@ -143,6 +143,35 @@ export type Plans = {
   banner: string;
 };
 
+export type RisingRow = {
+  rank: number;
+  sido: string;
+  name: string;
+  text: string;
+  kind: "실측" | "추론" | "계산";
+};
+
+export type Rising = {
+  scope: "seoul" | "national";
+  metric: string;
+  mode: "level" | "change";
+  basis: string;
+  total: number;
+  sidos: string[];
+  rows: RisingRow[];
+};
+
+function detailText(detail: unknown): string {
+  if (typeof detail === "string" && detail) return detail;
+  if (Array.isArray(detail)) {
+    const first = detail.find((item) => item && typeof item === "object" && "msg" in item) as
+      | { msg?: unknown }
+      | undefined;
+    if (first && typeof first.msg === "string") return first.msg;
+  }
+  return "계산 실패";
+}
+
 export const api = {
   dashboard: (focus: string) =>
     getJson<Dash>(`/api/dashboard?focus=${encodeURIComponent(focus)}`),
@@ -161,10 +190,14 @@ export const api = {
       body: JSON.stringify(payload),
     }).then(async (res) => {
       if (!res.ok) {
-        const err = (await res.json().catch(() => null)) as { detail?: string } | null;
-        throw new Error(err?.detail || "계산 실패");
+        const err = (await res.json().catch(() => null)) as { detail?: unknown } | null;
+        throw new Error(detailText(err?.detail));
       }
       return res.json() as Promise<SimResult>;
     }),
   plans: () => getJson<Plans>("/api/plans"),
+  rising: (scope: string, metric: string, mode: string, sido = "") =>
+    getJson<Rising>(
+      `/api/rising?scope=${scope}&metric=${metric}&mode=${mode}&sido=${encodeURIComponent(sido)}`,
+    ),
 };

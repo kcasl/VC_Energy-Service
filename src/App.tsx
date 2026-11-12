@@ -1,6 +1,7 @@
 import { NavLink, Route, Routes } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import MapPage from "./pages/MapPage";
+import RisingPage from "./pages/RisingPage";
 import CatalogPage from "./pages/CatalogPage";
 import SimulatorPage from "./pages/SimulatorPage";
 import PlansPage from "./pages/PlansPage";
@@ -11,6 +12,7 @@ import { usePrefs, type TextKey } from "./lib/prefs";
 const links: { to: string; key: TextKey }[] = [
   { to: "/", key: "navDash" },
   { to: "/map", key: "navMap" },
+  { to: "/rise", key: "navRise" },
   { to: "/data", key: "navData" },
   { to: "/sim", key: "navSim" },
   { to: "/plans", key: "navPlans" },
@@ -59,6 +61,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/map" element={<MapPage />} />
+            <Route path="/rise" element={<RisingPage />} />
             <Route path="/data" element={<CatalogPage />} />
             <Route path="/sim" element={<SimulatorPage />} />
             <Route path="/plans" element={<PlansPage />} />
@@ -74,7 +77,6 @@ export default function App() {
           <div>
             {t("contact")} <a href="mailto:kkcasl@ieee.org">kkcasl@ieee.org</a>
           </div>
-          <div>© 2026 KENTECH. All rights reserved.</div>
         </footer>
       </main>
     </div>

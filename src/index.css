@@ -365,6 +365,16 @@ select {
   border-bottom: 1px solid var(--line);
 }
 
+.map-jump {
+  display: inline-block;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 99px;
+  padding: 2px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .level {
   display: inline-flex;
   align-items: center;

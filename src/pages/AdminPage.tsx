@@ -185,6 +185,23 @@ const SECTIONS: Section[] = [
     ],
   },
   {
+    title: { ko: "오르는 활력", en: "Rising vitality" },
+    blocks: [
+      {
+        ko: "순위, 값이 더 큰 시군구 수 + 1. 같은 값은 같은 순위. 화면 정렬, 값 내림차순 다음 이름. 서울 구는 25행 전부. 전국은 같은 시·도 안에서 상위 20행.",
+        en: "Rank is one plus the number of municipalities with a strictly larger value. Ties share a rank. The table sorts by value descending, then by name. Seoul shows all 25 districts. Nationwide shows the top 20 inside the selected province.",
+      },
+      {
+        ko: "서울 현재값, 2026-06 V·분기 매출·분기 유동·최신 점포·2026-06 일반용. 서울 기간 변화, V는 2026-06−2025-07, 매출·유동도 같은 두 달, 전력은 2026-06−2025-06 일반용, 점포는 최신 분기 개업률−폐업률. 점포 수의 월별 시계열은 없음.",
+        en: "Seoul current values are the June 2026 score, the quarter sales and footfall attached to that month, the latest shop count, and June 2026 commercial power. Seoul change uses June 2026 minus July 2025 for the score, sales, and footfall. Power change is June 2026 commercial kWh minus June 2025. The shop row is the latest opening rate minus the closing rate, because shop counts have no monthly series.",
+      },
+      {
+        ko: "전국 현재값, 2026-06 전국 활력·매출·유동·2026-09-30 상가·2026-06 일반용. 서울 밖 매출·유동은 추론. 전국 기간 변화는 없음. 골목 상권, 행정동, 주거인구는 자료 밖.",
+        en: "Nationwide current values use the June 2026 national score, sales, and footfall, the 30 September 2026 shop count, and June 2026 commercial power. Sales and footfall outside Seoul are inferred. There is no nationwide change mode. Alley commercial areas, administrative dong, and residential population are outside this table.",
+      },
+    ],
+  },
+  {
     title: { ko: "지도 경계", en: "Map boundaries" },
     blocks: [
       {
@@ -258,8 +275,8 @@ const SECTIONS: Section[] = [
         tex: String.raw`\bar e_d=\frac{E_d}{N_d}`,
       },
       {
-        ko: "업종 묶음, 서비스 업종명 부분 일치. 여러 토큰은 하나라도 맞으면 포함. 카페=커피, 한식=한식음식점, 치킨·분식=치킨 또는 분식, 호프·주점=호프, 편의점=편의점, 미용=미용실, 학원=학원, 의류소매=일반의류, 헬스=스포츠클럽, 약국=의약품.",
-        en: "Trades are grouped by a substring of the service-trade name. Multiple tokens include a row when any token matches. Cafe matches 커피, Korean food matches 한식음식점, chicken and snacks match 치킨 or 분식, pubs match 호프, convenience stores match 편의점, beauty matches 미용실, academies match 학원, apparel matches 일반의류, gyms match 스포츠클럽, and pharmacies match 의약품.",
+        ko: "업종 목록, 서울 서비스 업종 가운데 전국 상가 소분류와 이름이 맞는 행. 앞의 열 개는 기존 묶음. 카페=커피, 한식=한식음식점, 치킨·분식=치킨 또는 분식, 호프·주점=호프, 편의점, 미용=미용실, 학원=예술·외국어·일반교습·컴퓨터, 의류소매=일반의류, 헬스=스포츠클럽, 약국=의약품. 분식·네일·피부관리·세부 학원·유아의류·의류임대·스터디 카페는 이 묶음 안. 전자상거래·게스트하우스·중고차·미용재료·녹음실·가정용품임대·주류도매·재생용품·중고가구는 전국 소분류에 같은 행이 없어 목록 밖.",
+        en: "The trade list is the Seoul service names that also exist as a national shop category. The first ten stay grouped: cafe matches 커피, Korean food matches 한식음식점, chicken and snacks match 치킨 or 분식, pubs match 호프, convenience stores match 편의점, beauty matches 미용실, academies match the four academy names, apparel matches 일반의류, gyms match 스포츠클럽, and pharmacies match 의약품. Snacks, nails, skin care, the separate academies, children’s apparel, apparel rental, and study cafes stay inside those groups. Online retail, guesthouses, used cars, beauty supplies, recording studios, household rental, liquor wholesale, recycled goods, and used furniture have no matching national category and stay off the list.",
       },
       {
         ko: "서울 업종 표의 분자, 그 묶음의 매출 합/점포 수를 정수로 반올림한 값. 분모의 구 평균, 매출과 점포가 둘 다 있는 업종만의 합, 반올림 전. 분모 0이면 ρ=1. 점포 수 0이면 개업률·폐업률·점포당 매출·점포당 건수·유동/점포 모두 0. 활력식의 분모 1과 다른 규칙.",

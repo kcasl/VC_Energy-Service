@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GeoJSON, MapContainer, TileLayer, useMap } from "react-leaflet";
+import { useSearchParams } from "react-router-dom";
 import type { Feature, FeatureCollection, GeoJsonObject } from "geojson";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -171,6 +172,39 @@ function FlyTo({ lat, lng }: { lat: number; lng: number }) {
   return null;
 }
 
+function MarkTarget({ sido, name, color }: { sido: string; name: string; color: string }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!sido || !name) return;
+    let opened = false;
+    const mark = (open: boolean) => {
+      map.eachLayer((layer) => {
+        const feature = (layer as L.Layer & { feature?: Feature }).feature;
+        if (!feature?.properties) return;
+        const row = asNation(feature.properties);
+        if (row.sido !== sido || row.name !== name) return;
+        const path = layer as L.Path;
+        path.setStyle({ weight: 3.2, color });
+        path.bringToFront();
+        if (open && !opened) {
+          path.openPopup();
+          opened = true;
+        }
+      });
+    };
+    mark(map.getZoom() >= 11);
+    const afterMove = () => mark(true);
+    const restyle = () => mark(false);
+    map.on("moveend", afterMove);
+    map.on("zoomend", restyle);
+    return () => {
+      map.off("moveend", afterMove);
+      map.off("zoomend", restyle);
+    };
+  }, [map, sido, name, color]);
+  return null;
+}
+
 function ZoomPaint({
   colorMode,
   sidoRank,
@@ -229,15 +263,31 @@ function WatchView({ onView }: { onView: (zoom: number) => void }) {
 
 export default function MapPage() {
   const { t, theme, lang, level } = usePrefs();
+  const [params] = useSearchParams();
+  const targetSido = params.get("sido") ?? "";
+  const targetName = params.get("name") ?? "";
   const stroke = theme === "dark" ? "#d5e4f2" : "#1c2b3a";
+  const markColor = theme === "dark" ? "#3ec6ef" : "#003068";
   const [spots, setSpots] = useState<MapSpot[]>([]);
   const [geo, setGeo] = useState<FeatureCollection | null>(null);
   const [q, setQ] = useState("");
   const [zoom, setZoom] = useState(7);
-  const [colorMode, setColorMode] = useState<"활력" | "전력">("활력");
+  const [colorMode, setColorMode] = useState<"활력" | "전력">(params.get("color") === "전력" ? "전력" : "활력");
   const [focus, setFocus] = useState<{ lat: number; lng: number } | null>(null);
   const [picked, setPicked] = useState<Nation | MapSpot | null>(null);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!geo || !targetSido || !targetName) return;
+    const feat = geo.features.find((item) => {
+      const row = asNation(item.properties);
+      return row.sido === targetSido && row.name === targetName;
+    });
+    if (!feat) return;
+    const row = asNation(feat.properties);
+    setPicked(row);
+    setFocus({ lat: row.lat, lng: row.lng });
+  }, [geo, targetSido, targetName]);
 
   useEffect(() => {
     api.map().then((d) => setSpots(d.spots)).catch(() => setSpots([]));
@@ -407,6 +457,7 @@ export default function MapPage() {
               }}
             />
             <StreetHeat />
+            <MarkTarget key={`${colorMode}-${theme}-${lang}`} sido={targetSido} name={targetName} color={markColor} />
           </MapContainer>
         )}
       </div>

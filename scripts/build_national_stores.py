@@ -1,7 +1,7 @@
 """Count national shops from the SEMAS September 2026 store file.
 
-Coordinates are kept for the ten startup industries so a typed address
-can be queried. Every other shop is counted toward the municipality total.
+Coordinates are kept for the startup trades so a typed address can be
+queried. Every other shop is counted toward the municipality total.
 """
 
 from __future__ import annotations
@@ -19,50 +19,13 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from backend.geoquery import _bbox, _contains
+from backend.industry_catalog import INDUSTRY_IDS, classify, public_rows
 from build_national_map import ALT, PARTS
 
 RAW = ROOT / "public" / "data" / "raw" / "sbiz_stores_20260930.zip"
 OUT = ROOT / "public" / "data" / "processed"
 PACK = struct.Struct("<bii")
-
-INDUSTRY_IDS = [
-    "cafe",
-    "korean",
-    "chicken",
-    "pub",
-    "cvs",
-    "beauty",
-    "academy",
-    "gym",
-    "retail",
-    "pharmacy",
-]
 CODE = {name: index for index, name in enumerate(INDUSTRY_IDS)}
-
-
-def classify(small: str, mid: str) -> str | None:
-    text = f"{small}|{mid}".replace(" ", "")
-    if "약국" in text or "의약품" in text:
-        return "pharmacy"
-    if "편의점" in text:
-        return "cvs"
-    if "카페" in text or "커피" in text:
-        return "cafe"
-    if "치킨" in text or "분식" in text:
-        return "chicken"
-    if "주점" in text or "호프" in text or "생맥주" in text:
-        return "pub"
-    if any(token in text for token in ("한식", "백반", "한정식", "찌개", "국수", "냉면", "돼지고기", "소고기", "곱창", "족발", "보쌈")):
-        return "korean"
-    if "미용" in text or "피부관리" in text or "네일" in text:
-        return "beauty"
-    if "학원" in text or "교습" in text:
-        return "academy"
-    if "헬스" in text or "체력단련" in text or "피트니스" in text:
-        return "gym"
-    if "의류" in text:
-        return "retail"
-    return None
 
 
 def main() -> None:
@@ -273,7 +236,11 @@ def main() -> None:
     for name, count in small_names.most_common(60):
         lines.append(f"  {count} {name}")
     report.write_text("\n".join(lines), encoding="utf-8")
-    print("matched", matched, "areas", len(areas))
+    (OUT / "industries.json").write_text(
+        json.dumps({"industries": public_rows()}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    print("matched", matched, "areas", len(areas), "trades", len(INDUSTRY_IDS))
 
 
 if __name__ == "__main__":
