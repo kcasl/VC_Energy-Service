@@ -25,3 +25,6 @@ npm run data
 ```
 
 `scripts/download_public_data.py`가 한전 월보 xlsx, 서울 자치구 상권 CSV, Open-Meteo 기온을 받고 `scripts/build_processed_data.py`가 활력지수를 만든다. 가스·공실·건축물대장은 인증이 필요해 지수에서 빠져 있다.
+
+
+## Backend disabled
