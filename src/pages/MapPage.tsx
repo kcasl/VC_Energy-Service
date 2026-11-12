@@ -379,7 +379,6 @@ function AreaLayer({
       held.current = null;
     }
     const layer = L.geoJSON(data as GeoJsonObject, {
-      smoothFactor: 2,
       style: (feat) => {
         const row = asNation(feat?.properties);
         const zoom = map.getZoom();
@@ -394,9 +393,10 @@ function AreaLayer({
           color: stroke,
           weight: 1.15,
           opacity: 0.45,
+          smoothFactor: 2,
           fillColor: LEVELS[level].color,
           fillOpacity: 0.28 - 0.22 * alley,
-        };
+        } as L.PathOptions;
       },
       onEachFeature(feat, layerEl) {
         const row = asNation(feat.properties);
