@@ -754,18 +754,40 @@ pre.preview {
     grid-template-columns: 1fr;
   }
   .side {
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "brand modes"
+      "nav nav";
     align-items: center;
-    gap: 16px;
-    padding: 14px;
+    gap: 10px 12px;
+    padding: 12px 14px 10px;
   }
-  .nav {
-    flex-direction: row;
-    flex-wrap: wrap;
+  .brand {
+    grid-area: brand;
+    width: 128px;
   }
   .mode-switch {
+    grid-area: modes;
     margin-top: 0;
-    flex: 0 0 168px;
+    width: max-content;
+    grid-template-columns: auto auto;
+  }
+  .mode-switch button {
+    padding: 6px 8px;
+  }
+  .nav {
+    grid-area: nav;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 6px;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  .nav a {
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
   .corner-logo {
     width: 96px;
