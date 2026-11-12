@@ -1,3 +1,4 @@
+# Prepare the corner logo from the source image.
 from pathlib import Path
 from PIL import Image
 
