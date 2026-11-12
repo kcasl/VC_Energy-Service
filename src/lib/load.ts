@@ -1,4 +1,4 @@
-export const API_ORIGIN = "http://3.34.129.129:8000";
+export const API_ORIGIN = "https://3.34.129.129";
 
 function apiUrl(path: string) {
   return `${API_ORIGIN}${path}`;
