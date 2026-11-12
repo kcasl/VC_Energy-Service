@@ -1,3 +1,4 @@
+# Download public energy, commerce, weather, and shop files.
 """Download public sources for the commercial vitality prototype.
 
 KEPCO monthly workbooks are fetched by file id from the public sales board.
