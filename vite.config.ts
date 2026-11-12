@@ -1,3 +1,4 @@
+// Pages base path and the local API proxy.
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
