@@ -1,3 +1,4 @@
+# Crop the product mark so it sits on the sidebar.
 """Crop the product mark and drop the navy field so it sits on the sidebar."""
 
 from pathlib import Path
